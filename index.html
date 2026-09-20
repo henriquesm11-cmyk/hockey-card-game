@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Hockey Card Game V7</title>
+<title>Hockey Card Game V10</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#06101d;color:#f4f7fb}
@@ -41,7 +41,7 @@ input,select{width:100%;min-height:44px;border:1px solid #2a4765;border-radius:1
 <body>
 <header>
 <h1>🏒 Hockey Card Game <span style="color:#53b8ff">V5</span></h1>
-<div class="sub">Full NHL Base Set engine • current roster sync • 2025–26 performance ratings</div>
+<div class="sub">Full NHL Base Set engine • NHL ratings order • expanding Base OVR tiers</div>
 <div class="coins">🪙 <span id="coins">1000</span> coins</div>
 <nav id="nav"></nav>
 </header>
@@ -258,14 +258,14 @@ function openPack(type){
     document.getElementById("packResult").innerHTML=`<div class="notice warn">Not enough coins. You need ${cfg.cost} 🪙.</div>`;
     return;
   }
-  if(type==="starter" && localStorage.getItem("hcg_starter_claimed_v6")==="1"){
+  if(type==="starter" && localStorage.getItem("hcg_starter_claimed_v8")==="1"){
     document.getElementById("packResult").innerHTML='<div class="notice warn">You already claimed your free Starter Pack.</div>';
     return;
   }
   coins-=cfg.cost;
   const pulls=cfg.build();
   pulls.forEach(p=>owned[p.id]=(owned[p.id]||0)+1);
-  if(type==="starter") localStorage.setItem("hcg_starter_claimed_v6","1");
+  if(type==="starter") localStorage.setItem("hcg_starter_claimed_v8","1");
   save(); update();
   const title={starter:"🎁 Starter Pack claimed!",bronze:"🥉 Bronze Pack opened!",silver:"🥈 Silver Pack opened!",gold:"🥇 Gold Pack opened!"}[type];
   document.getElementById("packResult").innerHTML='<div class="notice success"><b>'+title+'</b></div><div class="cards">'+pulls.map(p=>card(p,false)).join("")+'</div>';
@@ -371,36 +371,124 @@ function buildGoalie(r, team){
   return {id,name,team,pos:"G",raw,ovr:0,rarity:"Common",ability:"",
     ref,posRating,reb,phy,pas,number:r.sweaterNumber||"—"};
 }
-function scaleGroup(group, minOvr=60, maxOvr=81){
+// NHL 27 reference ratings for defensemen/goalies. These are used ONLY to order
+// players; our card OVR is then assigned by rank inside the position group.
+// Top Base = rank 1 (82 OVR), rank 2 = 81, rank 3 = 80, etc.
+const NHL27_D_G_RATINGS = {
+  "quinn hughes":95,"cale makar":95,"zach werenski":94,"rasmus dahlin":93,"miro heiskanen":93,
+  "roman josi":92,"victor hedman":92,"josh morrissey":91,"adam fox":91,"jaccob slavin":90,
+  "gustav forsling":89,"noah hanifin":89,"jake sanderson":89,"devon toews":89,"charlie mcavoy":89,
+  "matthew schaefer":88,"dougie hamilton":88,"colton parayko":88,"moritz seider":88,"shea theodore":88,
+  "lane hutson":88,"noah dobson":88,"thomas harley":88,"drew doughty":88,"erik karlsson":88,
+  "travis sanheim":88,"mikhail sergachev":88,"rasmus andersson":88,"macKenzie weegar":88,"evan bouchard":88,
+  "john carlson":88,"jonas brodin":88,"jonas siegenthaler":87,"brady skjei":87,"adam pelech":87,
+  "ryan pulock":87,"vince dunn":87,"neal pionk":87,"brandon montour":87,"shayne gostisbehere":87,
+  "aaron ekblad":87,"seth jones":87,"mike matheson":87,"esa lindell":87,"thomas chabot":87,
+  "jake walman":87,"mattias ekholm":87,"morgan rielly":87,"jakob chychrun":87,"brock faber":87,
+  "brett pesce":86,"owen power":86,"luke hughes":86,"brenden dillon":86,"jacob trouba":86,
+  "braden schneider":86,"k'andre miller":86,"kaiden guhle":86,"filip hronek":86,"kris letang":86,
+  "samuel girard":86,"damon severson":86,"brandon carlo":86,"martin fehervary":86,"hampus lindholm":86,
+  "bowen byram":85,"justin faulk":85,"jackson lacombe":85,"vladislav gavrikov":85,"dmitry orlov":85,
+  "brayden mcnabb":85,"brandt clarke":85,"mikey anderson":85,"sean durzi":85,"ryan mcdonagh":85,
+  "erik cernak":85,"josh manson":85,"brent burns":85,"ivan provorov":85,"darnell nurse":85,
+  "jared spurgeon":85,"nikita zadorov":85,"jake mccabe":85,"marcus pettersson":85,"jamie oleksiak":85,
+  "chris tanev":85,"jj moser":84,"denton mateychuk":84,"nicolas hague":84,"oliver ekman-larsson":84,
+  "alexander romanov":84,"cam fowler":84,"ryker evans":84,"philip broberg":84,"adam larsson":84,
+  "radko gudas":84,"alexander nikishin":84,"dylan demelo":84,"cam york":84,"ryan lindgren":84,
+  "andrei vasilevskiy":94,"ilya sorokin":93,"igor shesterkin":93,"connor hellebuyck":92,"jake oettinger":90,
+  "filip gustavsson":89,"thatcher demko":88,"juuse saros":88,"frederik andersen":87,"sergei bobrovsky":87,
+  "dustin wolf":87,"darcy kuemper":87,"linus ullmark":87,"jacob markstrom":87,"carter hart":87,
+  "tristan jarry":86,"logan thompson":86,"mackenzie blackwood":86,"jordan binnington":86,"joey daccord":85,
+  "pyotr kochetkov":85,"anthony stolarz":85,"joseph woll":85,"jeremy swayman":85,"karel vejmelka":85,
+  "sam montembeault":85,"cam talbot":85,"lukas dostal":85,"ukko-pekka luukkonen":84,"kevin lankinen":84,
+  "stuart skinner":84,"adin hill":84,"john gibson":84,"ville husso":84,"petr mrazek":84,"alex lyon":83,
+  "philipp grubauer":83,"spencer knight":83,"charlie lindgren":83,"samuel ersson":83,"casey desmith":83,
+  "jonathan quick":83,"jake allen":83,"semyon varlamov":82,"joonas korpisalo":82,"arvid soderblom":82,
+  "elvis merzlikins":82,"dan vladar":82,"joel hofer":82,"yaroslav askarov":82,"scott wedgewood":81,
+  "vitek vanecek":81,"anton forsberg":81,"alex nedeljkovic":81,"eric comrie":81,"james reimer":81,
+  "connor ingram":81,"david rittich":80,"matt murray":80,"jesper wallstedt":80,"jonas johansson":80,
+  "pheonix copley":80,"akira schmid":80,"justus annunen":80,"arturs silovs":80,"daniil tarasov":79,
+  "calvin pickard":79,"nico daws":79,"dennis hildeby":78,"mads sogaard":77,"jet greaves":73,"devin cooley":72
+};
+
+function normalizePlayerName(name){
+  return name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[’']/g,"'").replace(/[^a-z0-9' -]/g,"").replace(/\s+/g," ").trim();
+}
+function sourceRating(p){
+  const n=normalizePlayerName(p.name);
+  return NHL27_D_G_RATINGS[n];
+}
+function rankGroupBySource(group){
   if(!group.length)return;
-  const values=group.map(p=>p.raw);
-  const lo=Math.min(...values), hi=Math.max(...values);
+  // Players with a reference rating are ordered by that rating. Ties use the
+  // player's name only to make the ordering deterministic.
+  group.sort((a,b)=>{
+    const ar=sourceRating(a), br=sourceRating(b);
+    if(ar!==undefined && br!==undefined) return br-ar || a.name.localeCompare(b.name);
+    if(ar!==undefined) return -1;
+    if(br!==undefined) return 1;
+    return a.name.localeCompare(b.name);
+  });
+  group.forEach((p,i)=>{
+    // Exact rank ladder: #1=82, #2=81, #3=80 ... floor at 60.
+    p.ovr=Math.max(60,82-i);
+    p.sourceRating=sourceRating(p);
+    p.sourceRank=i+1;
+  });
+}
+function scaleGroup(group, minOvr=60, maxOvr=81){
+  // Kept for forwards. D/G no longer use a performance formula.
+  if(!group.length)return;
+  const values=group.map(p=>p.raw), lo=Math.min(...values), hi=Math.max(...values);
   group.forEach(p=>{
     const t=hi===lo?0.5:Math.max(0,Math.min(1,(p.raw-lo)/(hi-lo)));
-    // Smooth curve: high performers separate naturally, without arbitrary rank buckets.
-    const curved=Math.pow(t,0.78);
-    p.ovr=clamp(minOvr+(maxOvr-minOvr)*curved,minOvr,maxOvr);
+    p.ovr=clamp(minOvr+(maxOvr-minOvr)*Math.pow(t,0.78),minOvr,maxOvr);
   });
 }
 function finalizeRatings(list){
   if(!list.length)return list;
-
   const forwards=list.filter(p=>p.pos!=="D"&&p.pos!=="G");
   const defense=list.filter(p=>p.pos==="D");
   const goalies=list.filter(p=>p.pos==="G");
 
-  // Ratings are derived from the underlying performance stats in each position group.
-  // There is no longer a rank -> OVR bucket system.
+  // Forwards keep the V7 performance model. Defensemen and goalies use the
+  // NHL 27 reference ratings purely as a ranking input.
   scaleGroup(forwards,60,81);
-  scaleGroup(defense,60,81);
-  scaleGroup(goalies,60,81);
+  rankGroupBySource(defense);
+  rankGroupBySource(goalies);
 
-  const mcd=forwards.find(p=>p.name.toLowerCase()==="connor mcdavid");
-  const makar=defense.find(p=>p.name.toLowerCase()==="cale makar");
-  const vas=goalies.find(p=>p.name.toLowerCase()==="andrei vasilevskiy");
+  // D/G OVR ladder with increasingly larger groups at lower ratings.
+  // #1 = 82 (Top Base), then the number of players in each OVR band grows
+  // as the rating drops. This keeps elite cards scarce while giving the
+  // lower Base OVRs much more room.
+  function assignDGOverall(group){
+    // Number of players in each tier, from 81 downward. Each tier is larger
+    // than the one above it. Any remaining players continue at 60 OVR.
+    const tierSizes = [4,5,8,12,17,22,28,34,40,46,52,58,64,70,76,82,88,94,100,106,112,118];
+    let index=0;
+    group.forEach((p,i)=>{
+      const rank=i+1;
+      p.sourceRank=rank;
+      if(rank===1){
+        p.ovr=82;
+        p.rarity="Top Base";
+        return;
+      }
+      let ovr=81;
+      let remaining=rank-1;
+      for(let t=0;t<tierSizes.length;t++,ovr--){
+        if(remaining<=tierSizes[t]) break;
+        remaining-=tierSizes[t];
+      }
+      p.ovr=clamp(ovr,60,81);
+      p.rarity=p.ovr>=75?"Superstar":tierFromOvr(p.ovr);
+    });
+  }
+  assignDGOverall(defense);
+  assignDGOverall(goalies);
+
+  const mcd=forwards.find(p=>normalizePlayerName(p.name)==="connor mcdavid");
   if(mcd)mcd.ovr=82;
-  if(makar)makar.ovr=82;
-  if(vas)vas.ovr=82;
 
   list.forEach(p=>{
     p.ovr=clamp(p.ovr,55,82);
@@ -408,10 +496,14 @@ function finalizeRatings(list){
     p.ability=abilityFor(p);
   });
 
+  // Keep the special Top Base status for the #1 player in each position group.
   list.forEach(p=>{
-    const n=p.name.toLowerCase();
-    if(n==="connor mcdavid"||n==="cale makar"||n==="andrei vasilevskiy"){
+    if(p.pos!=="D"&&p.pos!=="G"&&normalizePlayerName(p.name)==="connor mcdavid"){
       p.ovr=82;p.rarity="Top Base";
+    }else if(p.sourceRank===1 && (p.pos==="D"||p.pos==="G")){
+      p.ovr=82;p.rarity="Top Base";
+    }else if((p.pos==="D"||p.pos==="G") && p.ovr>=75){
+      p.rarity="Superstar";
     }else if(p.ovr>=75){
       p.rarity="Superstar";
     }
@@ -452,12 +544,12 @@ rosterResults.forEach(({team,d})=>{
 const seen=new Set();
 players=all.filter(p=>{if(seen.has(p.id))return false;seen.add(p.id);return true});
 players=finalizeRatings(players);
-localStorage.setItem("hcg_players_v7",JSON.stringify(players));
+localStorage.setItem("hcg_players_v9",JSON.stringify(players));
 fillTeams();update();render();
 status.className="notice success";
-status.innerHTML=`✅ Full Base Set synced: <b>${players.length} players</b> across all 32 NHL teams. Ratings are calculated from 2025–26 regular-season data. McDavid, Makar and Vasilevskiy are the 82 OVR Top Base leaders for forwards, defensemen and goalies; each position has its own rating ladder and goalies use REF/POS/REB/PHY/PAS.`;
+status.innerHTML=`✅ Full Base Set synced: <b>${players.length} players</b> across all 32 NHL teams. Forwards use the performance model; defensemen and goalies are ordered by NHL 27 reference ratings, then converted to expanding OVR tiers. Goalies use REF/POS/REB/PHY/PAS.`;
 }catch(err){
-const cached=JSON.parse(localStorage.getItem("hcg_players_v7")||"[]");
+const cached=JSON.parse(localStorage.getItem("hcg_players_v9")||"[]");
 if(cached.length){players=cached;fillTeams();update();render();status.className="notice warn";status.textContent="⚠️ Live NHL sync failed, so the last saved Base Set is being used. Try Sync again later."}
 else{
 status.className="notice warn";
