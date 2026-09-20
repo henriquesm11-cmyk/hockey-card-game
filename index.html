@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Hockey Card Game V10</title>
+<title>Hockey Card Game V11</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#06101d;color:#f4f7fb}
@@ -436,6 +436,13 @@ function rankGroupBySource(group){
     p.sourceRank=i+1;
   });
 }
+function rankGroupByRaw(group){
+  if(!group.length)return;
+  group.sort((a,b)=>{
+    const ar=Number(a.raw)||0, br=Number(b.raw)||0;
+    return br-ar || a.name.localeCompare(b.name);
+  });
+}
 function scaleGroup(group, minOvr=60, maxOvr=81){
   // Kept for forwards. D/G no longer use a performance formula.
   if(!group.length)return;
@@ -451,21 +458,18 @@ function finalizeRatings(list){
   const defense=list.filter(p=>p.pos==="D");
   const goalies=list.filter(p=>p.pos==="G");
 
-  // Forwards keep the V7 performance model. Defensemen and goalies use the
-  // NHL 27 reference ratings purely as a ranking input.
-  scaleGroup(forwards,60,81);
+  // All three position groups now use the same expanding OVR-tier system.
+  // Players are ordered by the best available performance/source score within
+  // their position group, while the number of players per OVR grows as OVR drops.
+  // McDavid is locked as the #1 forward and therefore 82 Top Base.
+  rankGroupByRaw(forwards);
   rankGroupBySource(defense);
   rankGroupBySource(goalies);
 
-  // D/G OVR ladder with increasingly larger groups at lower ratings.
-  // #1 = 82 (Top Base), then the number of players in each OVR band grows
-  // as the rating drops. This keeps elite cards scarce while giving the
-  // lower Base OVRs much more room.
-  function assignDGOverall(group){
-    // Number of players in each tier, from 81 downward. Each tier is larger
-    // than the one above it. Any remaining players continue at 60 OVR.
+  // Same expanding ladder for forwards, defensemen and goalies.
+  // #1 = 82, then increasingly larger groups at lower OVRs.
+  function assignExpandingOverall(group){
     const tierSizes = [4,5,8,12,17,22,28,34,40,46,52,58,64,70,76,82,88,94,100,106,112,118];
-    let index=0;
     group.forEach((p,i)=>{
       const rank=i+1;
       p.sourceRank=rank;
@@ -484,11 +488,18 @@ function finalizeRatings(list){
       p.rarity=p.ovr>=75?"Superstar":tierFromOvr(p.ovr);
     });
   }
-  assignDGOverall(defense);
-  assignDGOverall(goalies);
+  assignExpandingOverall(forwards);
+  assignExpandingOverall(defense);
+  assignExpandingOverall(goalies);
 
+  // McDavid must remain the #1 forward / 82 Top Base.
   const mcd=forwards.find(p=>normalizePlayerName(p.name)==="connor mcdavid");
-  if(mcd)mcd.ovr=82;
+  if(mcd){
+    forwards.splice(forwards.indexOf(mcd),1);
+    forwards.unshift(mcd);
+    forwards.forEach((p,i)=>{p.sourceRank=i+1;});
+    assignExpandingOverall(forwards);
+  }
 
   list.forEach(p=>{
     p.ovr=clamp(p.ovr,55,82);
