@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Hockey Card Game V6</title>
+<title>Hockey Card Game V7</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#06101d;color:#f4f7fb}
@@ -321,7 +321,7 @@ return roles.sort((a,b)=>b[1]-a[1])[0][0];
 function buildSkater(r, team){
   const name=((r.firstName?.default||"")+" "+(r.lastName?.default||"")).trim();
   const pos=r.positionCode==="D"?"D":(r.positionCode==="L"?"LW":r.positionCode==="R"?"RW":"C");
-  const s=window.__skaterStats?.[r.id]||{};
+  const s=window.__skaterStats?.[r.id]||window.__skaterStats?.[String(r.id)]||{};
   const gp=statNum(s.gamesPlayed), g=statNum(s.goals), assists=statNum(s.assists);
   const pts=statNum(s.points), shots=statNum(s.shots), hits=statNum(s.hits);
   const blocks=statNum(s.blockedShots), toi=statNum(s.avgTimeOnIcePerGame||s.avgToi);
@@ -334,77 +334,66 @@ function buildSkater(r, team){
   let def=clamp(53+blocks/10+hits/25+Math.max(0,statNum(s.plusMinus))/5,45,92);
 
   if(pos==="D"){
-    def=clamp(def+8,50,94);
-    pas=clamp(pas+3,48,92);
-    sho=clamp(sho-2,45,90);
+    // Defensemen are evaluated with defense, transition play, puck movement and offense.
+    // Their OVR is NOT assigned from a simple rank ladder.
+    const dpg=gp?blocks/gp:0, hpg=gp?hits/gp:0, tpg=gp?pts/gp:0;
+    def=clamp(55+dpg*2.2+hpg*0.55+Math.max(-10,Math.min(10,statNum(s.plusMinus)))*0.7,50,94);
+    pas=clamp(56+apg*18+tpg*3+toi*0.08,48,94);
+    sho=clamp(54+gpg*34+shots/50,45,92);
+    spd=clamp(58+toi/2.7,48,92);
+    phy=clamp(54+hpg*0.65+dpg*0.35,48,90);
   }
 
-  const raw=sho*.28+pas*.27+spd*.16+phy*.10+def*.19+Math.min(5,ppg*2);
+  const raw=pos==="D"
+    ? sho*.20+pas*.25+spd*.15+phy*.10+def*.30+Math.min(4,ppg*1.5)
+    : sho*.28+pas*.27+spd*.16+phy*.10+def*.19+Math.min(5,ppg*2);
   return {id:String(r.id),name,team,pos,raw,ovr:0,rarity:"Common",ability:"",
     sho,pas,spd,phy,def,number:r.sweaterNumber||"—"};
 }
 function buildGoalie(r, team){
   const name=((r.firstName?.default||"")+" "+(r.lastName?.default||"")).trim();
-  const s=window.__goalieStats?.[r.id]||{};
-  const gp=statNum(s.gamesPlayed), sv=statNum(s.savePctg), gaa=statNum(s.goalsAgainstAvg,3.2);
+  const id=String(r.id);
+  const s=window.__goalieStats?.[id]||window.__goalieStats?.[String(r.id)]||{};
+  const gp=statNum(s.gamesPlayed), sv=statNum(s.savePctg), gaa=statNum(s.goalsAgainstAvg,3.20);
   const save=sv>1?sv/100:sv;
-  const svScore=save>=.90?(save-.90)*300:(save-.85)*120;
+  const wins=statNum(s.wins), shutouts=statNum(s.shutouts), saves=statNum(s.saves);
+  const assists=statNum(s.assists);
 
-  // Goalies use their own five Base Set attributes — they do not have SHO/SPD/DEF.
-  const ref=clamp(60+svScore+Math.min(7,gp/8),50,94);
-  const posRating=clamp(60+svScore+(3.0-gaa)*5,50,94);
-  const reb=clamp(62+svScore-(gaa-2.5)*6,50,94);
-  const phy=clamp(58+Math.min(12,gp/10),50,88);
-  const pas=clamp(55+(save-.90)*150,45,85);
+  // Goalie-only attributes. No SHO/SPD/DEF are used for goalies.
+  const performance=(save-0.88)*180;
+  const ref=clamp(66+performance+Math.min(6,gp/12),52,94);
+  const posRating=clamp(65+performance+(3.00-gaa)*8+Math.min(4,wins/12),52,94);
+  const reb=clamp(64+performance+(3.00-gaa)*5+Math.min(3,shutouts*0.8),52,94);
+  const phy=clamp(60+Math.min(12,gp/10),55,88);
+  const pas=clamp(54+Math.min(12,assists*2)+Math.min(5,saves/500),48,82);
   const raw=ref*.34+posRating*.34+reb*.14+phy*.10+pas*.08;
 
-  return {id:String(r.id),name,team,pos:"G",raw,ovr:0,rarity:"Common",ability:"",
-    ref, posRating, reb, phy, pas, number:r.sweaterNumber||"—"};
+  return {id,name,team,pos:"G",raw,ovr:0,rarity:"Common",ability:"",
+    ref,posRating,reb,phy,pas,number:r.sweaterNumber||"—"};
+}
+function scaleGroup(group, minOvr=60, maxOvr=81){
+  if(!group.length)return;
+  const values=group.map(p=>p.raw);
+  const lo=Math.min(...values), hi=Math.max(...values);
+  group.forEach(p=>{
+    const t=hi===lo?0.5:Math.max(0,Math.min(1,(p.raw-lo)/(hi-lo)));
+    // Smooth curve: high performers separate naturally, without arbitrary rank buckets.
+    const curved=Math.pow(t,0.78);
+    p.ovr=clamp(minOvr+(maxOvr-minOvr)*curved,minOvr,maxOvr);
+  });
 }
 function finalizeRatings(list){
-  if(!list.length) return list;
+  if(!list.length)return list;
 
-  // Base Set has a separate rating ladder for forwards, defensemen and goalies.
-  // Each position group has exactly one 82 OVR / Top Base leader:
-  // McDavid (F), Makar (D), Vasilevskiy (G).
-  const forwards=list.filter(p=>p.pos!=="D" && p.pos!=="G");
+  const forwards=list.filter(p=>p.pos!=="D"&&p.pos!=="G");
   const defense=list.filter(p=>p.pos==="D");
   const goalies=list.filter(p=>p.pos==="G");
 
-  function rankGroup(group){
-    group.sort((a,b)=>b.raw-a.raw);
-    group.forEach((p,i)=>{
-      const r=i+1;
-      let o;
-      if(r===1)o=81;
-      else if(r<=3)o=80;
-      else if(r<=7)o=79;
-      else if(r<=14)o=78;
-      else if(r<=24)o=77;
-      else if(r<=38)o=76;
-      else if(r<=55)o=75;
-      else if(r<=78)o=74;
-      else if(r<=105)o=73;
-      else if(r<=135)o=72;
-      else if(r<=170)o=71;
-      else if(r<=215)o=70;
-      else if(r<=260)o=69;
-      else if(r<=315)o=68;
-      else if(r<=370)o=67;
-      else if(r<=430)o=66;
-      else if(r<=490)o=65;
-      else if(r<=555)o=64;
-      else if(r<=620)o=63;
-      else if(r<=690)o=62;
-      else if(r<=760)o=61;
-      else o=60;
-      p.ovr=o;
-    });
-  }
-
-  rankGroup(forwards);
-  rankGroup(defense);
-  rankGroup(goalies);
+  // Ratings are derived from the underlying performance stats in each position group.
+  // There is no longer a rank -> OVR bucket system.
+  scaleGroup(forwards,60,81);
+  scaleGroup(defense,60,81);
+  scaleGroup(goalies,60,81);
 
   const mcd=forwards.find(p=>p.name.toLowerCase()==="connor mcdavid");
   const makar=defense.find(p=>p.name.toLowerCase()==="cale makar");
@@ -419,13 +408,11 @@ function finalizeRatings(list){
     p.ability=abilityFor(p);
   });
 
-  // Exactly one Top Base card per position group.
   list.forEach(p=>{
     const n=p.name.toLowerCase();
-    if(n==="connor mcdavid" || n==="cale makar" || n==="andrei vasilevskiy"){
-      p.ovr=82;
-      p.rarity="Top Base";
-    }else if(p.ovr>=80){
+    if(n==="connor mcdavid"||n==="cale makar"||n==="andrei vasilevskiy"){
+      p.ovr=82;p.rarity="Top Base";
+    }else if(p.ovr>=75){
       p.rarity="Superstar";
     }
   });
@@ -465,12 +452,12 @@ rosterResults.forEach(({team,d})=>{
 const seen=new Set();
 players=all.filter(p=>{if(seen.has(p.id))return false;seen.add(p.id);return true});
 players=finalizeRatings(players);
-localStorage.setItem("hcg_players_v6",JSON.stringify(players));
+localStorage.setItem("hcg_players_v7",JSON.stringify(players));
 fillTeams();update();render();
 status.className="notice success";
 status.innerHTML=`✅ Full Base Set synced: <b>${players.length} players</b> across all 32 NHL teams. Ratings are calculated from 2025–26 regular-season data. McDavid, Makar and Vasilevskiy are the 82 OVR Top Base leaders for forwards, defensemen and goalies; each position has its own rating ladder and goalies use REF/POS/REB/PHY/PAS.`;
 }catch(err){
-const cached=JSON.parse(localStorage.getItem("hcg_players_v6")||"[]");
+const cached=JSON.parse(localStorage.getItem("hcg_players_v7")||"[]");
 if(cached.length){players=cached;fillTeams();update();render();status.className="notice warn";status.textContent="⚠️ Live NHL sync failed, so the last saved Base Set is being used. Try Sync again later."}
 else{
 status.className="notice warn";
