@@ -47,7 +47,7 @@ input,select{width:100%;min-height:44px;border:1px solid #2a4765;border-radius:1
 </header>
 
 <main>
-<section id="home" class="page active"><div class="dashboard"><div class="dashHero"><div class="badge">🏒 HOCKEY CARD GAME • V15</div><h2>Build your collection. Build your team. Play.</h2><p class="muted">Collect NHL players, chase rare Base cards, earn coins and get ready for the full hockey gameplay system.</p><button class="primary playBig" onclick="show('game')">🎮 PLAY QUICK GAME</button><div id="syncStatus" class="notice" style="margin-top:14px">Loading the full NHL Base Set…</div><button id="syncBtn" class="primary">🔄 Sync NHL Base Set</button></div><div class="quickStats"><div class="quickStat"><b id="homeCoins">1000</b><span>🪙 Coins</span></div><div class="quickStat"><b id="homePct">0%</b><span>🃏 Collection Complete</span></div><div class="quickStat"><b id="homeUnique">0</b><span>Unique Cards</span></div><div class="quickStat"><b id="homePower">—</b><span>Projected Team OVR</span></div></div></div><div class="homeGrid"><div class="panel feature"><h3>🎁 Daily Reward</h3><div class="daily"><div><b>Free daily coins</b><div class="muted small">Come back every day for a free reward.</div></div><button id="dailyBtn" class="primary" onclick="claimDaily()">Claim 100 🪙</button></div></div><div class="panel feature"><h3>⭐ Featured</h3><p class="muted">Chase the highest Base OVR players and collect every version as special sets arrive.</p><button class="secondary" onclick="show('packs')">📦 View Packs</button></div></div><div class="panel" style="margin-top:14px"><h3>🎯 V15 roadmap</h3><div class="grid2"><div><b>Collection</b><div class="muted small">Base Set, rarity, OVR tiers, goalie ratings and filters are locked in.</div></div><div><b>Next up</b><div class="muted small">Team Builder → full Quick Game → tournaments and more.</div></div></div><div class="source">NHL data reference: roster and statistics endpoints. Base ratings use the finalized position-specific NHL rating order and expanding OVR tiers.</div></div></section>
+<section id="home" class="page active"><div class="dashboard"><div class="dashHero"><div class="badge">🏒 HOCKEY CARD GAME • V16</div><h2>Build your collection. Build your team. Play.</h2><p class="muted">Collect NHL players, chase rare Base cards, earn coins and get ready for the full hockey gameplay system.</p><button class="primary playBig" onclick="show('game')">🎮 PLAY QUICK GAME</button><div id="syncStatus" class="notice" style="margin-top:14px">Loading the full NHL Base Set…</div><button id="syncBtn" class="primary">🔄 Manual NHL Refresh</button></div><div class="quickStats"><div class="quickStat"><b id="homeCoins">1000</b><span>🪙 Coins</span></div><div class="quickStat"><b id="homePct">0%</b><span>🃏 Collection Complete</span></div><div class="quickStat"><b id="homeUnique">0</b><span>Unique Cards</span></div><div class="quickStat"><b id="homePower">—</b><span>Projected Team OVR</span></div></div></div><div class="homeGrid"><div class="panel feature"><h3>🎁 Daily Reward</h3><div class="daily"><div><b>Free daily coins</b><div class="muted small">Come back every day for a free reward.</div></div><button id="dailyBtn" class="primary" onclick="claimDaily()">Claim 100 🪙</button></div></div><div class="panel feature"><h3>⭐ Featured</h3><p class="muted">Chase the highest Base OVR players and collect every version as special sets arrive.</p><button class="secondary" onclick="show('packs')">📦 View Packs</button></div></div><div class="panel" style="margin-top:14px"><h3>🎯 V16 roadmap</h3><div class="grid2"><div><b>Collection</b><div class="muted small">Base Set, rarity, OVR tiers, goalie ratings and filters are locked in.</div></div><div><b>Next up</b><div class="muted small">Team Builder → full Quick Game → tournaments and more.</div></div></div><div class="source">NHL data reference: roster and statistics endpoints. Base ratings use the finalized position-specific NHL rating order and expanding OVR tiers.</div></div></section>
 
 <section id="collection" class="page">
 <div class="panel">
@@ -553,12 +553,12 @@ rosterResults.forEach(({team,d})=>{
 const seen=new Set();
 players=all.filter(p=>{if(seen.has(p.id))return false;seen.add(p.id);return true});
 players=finalizeRatings(players);
-localStorage.setItem("hcg_players_v13",JSON.stringify(players));
+localStorage.setItem("hcg_players_live_v16",JSON.stringify(players));
 fillTeams();update();render();
 status.className="notice success";
 status.innerHTML=`✅ Full Base Set synced: <b>${players.length} players</b> across all 32 NHL teams. Forwards use the performance model; defensemen and goalies are ordered by NHL 27 reference ratings, then converted to expanding OVR tiers. Goalies use REF/POS/REB/PHY/PAS.`;
 }catch(err){
-const cached=JSON.parse(localStorage.getItem("hcg_players_v13")||localStorage.getItem("hcg_players_v12")||localStorage.getItem("hcg_players_v9")||"[]");
+const cached=JSON.parse(localStorage.getItem("hcg_locked_base_v16")||"[]");
 if(cached.length){players=cached;fillTeams();update();render();status.className="notice warn";status.textContent="⚠️ Live NHL sync failed, so the last saved Base Set is being used. Try Sync again later."}
 else{
 status.className="notice warn";
@@ -578,15 +578,38 @@ updateDailyButton();
 // Fast startup: use the saved Base Set immediately. Only do a live NHL sync
 // automatically when there is no cached Base Set yet. This prevents the site
 // from waiting on the large NHL statistics endpoints every time it opens.
-const cachedStartup=JSON.parse(localStorage.getItem("hcg_players_v13")||localStorage.getItem("hcg_players_v12")||localStorage.getItem("hcg_players_v9")||"[]");
-if(cachedStartup.length){
-  players=cachedStartup;
+// 🔒 LOCKED BASE SET STARTUP
+// The finalized Base Set is treated as immutable for normal gameplay.
+// We snapshot the existing saved set once, then ALWAYS load that snapshot
+// immediately. Live NHL sync is manual and can never block startup.
+const LOCKED_BASE_KEY="hcg_locked_base_v16";
+let lockedBase=JSON.parse(localStorage.getItem(LOCKED_BASE_KEY)||"[]");
+
+if(!lockedBase.length){
+  const legacy=JSON.parse(
+    localStorage.getItem("hcg_players_v13")||
+    localStorage.getItem("hcg_players_v12")||
+    localStorage.getItem("hcg_players_v9")||"[]"
+  );
+  if(legacy.length){
+    lockedBase=legacy;
+    localStorage.setItem(LOCKED_BASE_KEY,JSON.stringify(lockedBase));
+  }
+}
+
+if(lockedBase.length){
+  players=lockedBase;
   fillTeams(); update(); render();
   const st=document.getElementById("syncStatus");
   st.className="notice success";
-  st.innerHTML=`⚡ Base Set loaded instantly from your saved collection: <b>${players.length} players</b>. Tap <b>Sync NHL Base Set</b> only when you want to refresh NHL data.`;
+  st.innerHTML=`⚡ <b>Base Set loaded instantly.</b> ${players.length} locked players. Players and OVRs will not change.`;
 }else{
-  syncNHL();
+  // No cached set exists on this device. Do NOT launch a slow network sync.
+  players=[];
+  update(); render();
+  const st=document.getElementById("syncStatus");
+  st.className="notice warn";
+  st.innerHTML="⚠️ No saved Base Set found on this device. Use <b>Sync NHL Base Set</b> once to create the locked set.";
 }
 </script>
 </body>
