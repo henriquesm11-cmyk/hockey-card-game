@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Hockey Card Game V5</title>
+<title>Hockey Card Game V6</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#06101d;color:#f4f7fb}
@@ -180,9 +180,7 @@ return `<div class="card ${rarityClass(p.rarity)}">
 <div class="name">${esc(p.name)}</div>
 <div class="team">${esc(p.team)} • #${p.number}</div>
 <div class="ovr">${p.ovr}</div>
-<div class="stats5">
-<div class="mini">SHO<b>${p.sho}</b></div><div class="mini">PAS<b>${p.pas}</b></div><div class="mini">SPD<b>${p.spd}</b></div><div class="mini">PHY<b>${p.phy}</b></div><div class="mini">DEF<b>${p.def}</b></div>
-</div>
+${p.pos==="G" ? `<div class="stats5"><div class="mini">REF<b>${p.ref}</b></div><div class="mini">POS<b>${p.posRating}</b></div><div class="mini">REB<b>${p.reb}</b></div><div class="mini">PHY<b>${p.phy}</b></div><div class="mini">PAS<b>${p.pas}</b></div></div>` : `<div class="stats5"><div class="mini">SHO<b>${p.sho}</b></div><div class="mini">PAS<b>${p.pas}</b></div><div class="mini">SPD<b>${p.spd}</b></div><div class="mini">PHY<b>${p.phy}</b></div><div class="mini">DEF<b>${p.def}</b></div></div>`}
 <div class="ability">⚡ <b>${esc(p.ability)}</b> • Base Set ability</div>
 ${showOwned?`<div class="num" style="margin-top:10px">Owned: ${ownedCount}</div>`:""}
 </div>`;
@@ -260,14 +258,14 @@ function openPack(type){
     document.getElementById("packResult").innerHTML=`<div class="notice warn">Not enough coins. You need ${cfg.cost} 🪙.</div>`;
     return;
   }
-  if(type==="starter" && localStorage.getItem("hcg_starter_claimed_v5")==="1"){
+  if(type==="starter" && localStorage.getItem("hcg_starter_claimed_v6")==="1"){
     document.getElementById("packResult").innerHTML='<div class="notice warn">You already claimed your free Starter Pack.</div>';
     return;
   }
   coins-=cfg.cost;
   const pulls=cfg.build();
   pulls.forEach(p=>owned[p.id]=(owned[p.id]||0)+1);
-  if(type==="starter") localStorage.setItem("hcg_starter_claimed_v5","1");
+  if(type==="starter") localStorage.setItem("hcg_starter_claimed_v6","1");
   save(); update();
   const title={starter:"🎁 Starter Pack claimed!",bronze:"🥉 Bronze Pack opened!",silver:"🥈 Silver Pack opened!",gold:"🥇 Gold Pack opened!"}[type];
   document.getElementById("packResult").innerHTML='<div class="notice success"><b>'+title+'</b></div><div class="cards">'+pulls.map(p=>card(p,false)).join("")+'</div>';
@@ -350,24 +348,27 @@ function buildGoalie(r, team){
   const s=window.__goalieStats?.[r.id]||{};
   const gp=statNum(s.gamesPlayed), sv=statNum(s.savePctg), gaa=statNum(s.goalsAgainstAvg,3.2);
   const save=sv>1?sv/100:sv;
-  const wins=statNum(s.wins);
   const svScore=save>=.90?(save-.90)*300:(save-.85)*120;
+
+  // Goalies use their own five Base Set attributes — they do not have SHO/SPD/DEF.
   const ref=clamp(60+svScore+Math.min(7,gp/8),50,94);
-  const pos=clamp(60+svScore+(3.0-gaa)*5,50,94);
+  const posRating=clamp(60+svScore+(3.0-gaa)*5,50,94);
+  const reb=clamp(62+svScore-(gaa-2.5)*6,50,94);
   const phy=clamp(58+Math.min(12,gp/10),50,88);
   const pas=clamp(55+(save-.90)*150,45,85);
-  const spd=clamp(55+(save-.90)*130,45,84);
-  const def=clamp((ref+pos)/2+3,50,95);
-  const raw=ref*.34+pos*.34+phy*.10+pas*.07+spd*.05+def*.10;
+  const raw=ref*.34+posRating*.34+reb*.14+phy*.10+pas*.08;
+
   return {id:String(r.id),name,team,pos:"G",raw,ovr:0,rarity:"Common",ability:"",
-    sho:clamp(ref-5,45,90),pas,spd,phy,def,number:r.sweaterNumber||"—"};
+    ref, posRating, reb, phy, pas, number:r.sweaterNumber||"—"};
 }
 function finalizeRatings(list){
   if(!list.length) return list;
 
-  // Base Set: McDavid is the only 82 OVR / Top Base card.
-  // Forwards, defensemen and goalies are ranked separately for balance.
-  const skaters=list.filter(p=>p.pos!=="G");
+  // Base Set has a separate rating ladder for forwards, defensemen and goalies.
+  // Each position group has exactly one 82 OVR / Top Base leader:
+  // McDavid (F), Makar (D), Vasilevskiy (G).
+  const forwards=list.filter(p=>p.pos!=="D" && p.pos!=="G");
+  const defense=list.filter(p=>p.pos==="D");
   const goalies=list.filter(p=>p.pos==="G");
 
   function rankGroup(group){
@@ -401,18 +402,16 @@ function finalizeRatings(list){
     });
   }
 
-  // Separate forwards, defensemen and goalies so one position cannot
-  // dominate the entire Base Set rating curve.
-  rankGroup(skaters.filter(p=>p.pos!=="D"));
-  rankGroup(skaters.filter(p=>p.pos==="D"));
+  rankGroup(forwards);
+  rankGroup(defense);
   rankGroup(goalies);
 
-  // Keep the defensive positions from becoming artificially inflated.
-  skaters.filter(p=>p.pos==="D").forEach(p=>p.ovr=Math.min(p.ovr,80));
-  goalies.forEach(p=>p.ovr=Math.min(p.ovr,80));
-
-  const mcd=skaters.find(p=>p.name.toLowerCase()==="connor mcdavid");
+  const mcd=forwards.find(p=>p.name.toLowerCase()==="connor mcdavid");
+  const makar=defense.find(p=>p.name.toLowerCase()==="cale makar");
+  const vas=goalies.find(p=>p.name.toLowerCase()==="andrei vasilevskiy");
   if(mcd)mcd.ovr=82;
+  if(makar)makar.ovr=82;
+  if(vas)vas.ovr=82;
 
   list.forEach(p=>{
     p.ovr=clamp(p.ovr,55,82);
@@ -420,9 +419,10 @@ function finalizeRatings(list){
     p.ability=abilityFor(p);
   });
 
-  // Only McDavid is Top Base.
+  // Exactly one Top Base card per position group.
   list.forEach(p=>{
-    if(p.name.toLowerCase()==="connor mcdavid"){
+    const n=p.name.toLowerCase();
+    if(n==="connor mcdavid" || n==="cale makar" || n==="andrei vasilevskiy"){
       p.ovr=82;
       p.rarity="Top Base";
     }else if(p.ovr>=80){
@@ -434,7 +434,6 @@ function finalizeRatings(list){
   list.forEach((p,i)=>p.number=i+1);
   return list;
 }
-
 async function fetchJson(url){
 const res=await fetch(url,{cache:"no-store"});
 if(!res.ok)throw new Error("HTTP "+res.status);
@@ -466,12 +465,12 @@ rosterResults.forEach(({team,d})=>{
 const seen=new Set();
 players=all.filter(p=>{if(seen.has(p.id))return false;seen.add(p.id);return true});
 players=finalizeRatings(players);
-localStorage.setItem("hcg_players_v5",JSON.stringify(players));
+localStorage.setItem("hcg_players_v6",JSON.stringify(players));
 fillTeams();update();render();
 status.className="notice success";
-status.innerHTML=`✅ Full Base Set synced: <b>${players.length} players</b> across all 32 NHL teams. Ratings are calculated from 2025–26 regular-season data. McDavid is the only 82 OVR Top Base card; forwards, defensemen and goalies are balanced separately.`;
+status.innerHTML=`✅ Full Base Set synced: <b>${players.length} players</b> across all 32 NHL teams. Ratings are calculated from 2025–26 regular-season data. McDavid, Makar and Vasilevskiy are the 82 OVR Top Base leaders for forwards, defensemen and goalies; each position has its own rating ladder and goalies use REF/POS/REB/PHY/PAS.`;
 }catch(err){
-const cached=JSON.parse(localStorage.getItem("hcg_players_v5")||"[]");
+const cached=JSON.parse(localStorage.getItem("hcg_players_v6")||"[]");
 if(cached.length){players=cached;fillTeams();update();render();status.className="notice warn";status.textContent="⚠️ Live NHL sync failed, so the last saved Base Set is being used. Try Sync again later."}
 else{
 status.className="notice warn";
