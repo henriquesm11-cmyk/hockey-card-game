@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Hockey Card Game V18.1</title>
+<title>Hockey Card Game V18.2</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#06101d;color:#f4f7fb}
@@ -42,14 +42,14 @@ input,select{width:100%;min-height:44px;border:1px solid #2a4765;border-radius:1
 </head>
 <body>
 <header>
-<h1>🏒 Hockey Card Game <span style="color:#53b8ff">V18</span></h1>
+<h1>🏒 Hockey Card Game <span style="color:#53b8ff">V18.2</span></h1>
 <div class="sub">Full NHL Base Set engine • NHL ratings order • expanding Base OVR tiers</div>
 <div class="coins">🪙 <span id="coins">1000</span> coins</div>
 <nav id="nav"></nav>
 </header>
 
 <main>
-<section id="home" class="page active"><div class="dashboard"><div class="dashHero"><div class="badge">🏒 HOCKEY CARD GAME • V18.1</div><h2>Build your collection. Build your team. Play.</h2><p class="muted">Collect NHL players, chase rare Base cards, earn coins and get ready for the full hockey gameplay system.</p><button class="primary playBig" onclick="show('game')">🎮 PLAY QUICK GAME</button><div id="syncStatus" class="notice" style="margin-top:14px">Loading your locked Base Set…</div><button id="syncBtn" class="primary">🔄 Manual NHL Refresh</button></div><div class="quickStats"><div class="quickStat"><b id="homeCoins">1000</b><span>🪙 Coins</span></div><div class="quickStat"><b id="homePct">0%</b><span>🃏 Collection Complete</span></div><div class="quickStat"><b id="homeUnique">0</b><span>Unique Cards</span></div><div class="quickStat"><b id="homePower">—</b><span>Projected Team OVR</span></div></div></div><div class="homeGrid"><div class="panel feature"><h3>🎁 Daily Reward</h3><div class="daily"><div><b>Free daily coins</b><div class="muted small">Come back every day for a free reward.</div></div><button id="dailyBtn" class="primary" onclick="claimDaily()">Claim 100 🪙</button></div></div><div class="panel feature"><h3>⭐ Featured</h3><p class="muted">Chase the highest Base OVR players and collect every version as special sets arrive.</p><button class="secondary" onclick="show('packs')">📦 View Packs</button></div></div><div class="panel" style="margin-top:14px"><h3>🎯 V18.1 roadmap</h3><div class="grid2"><div><b>Collection</b><div class="muted small">Base Set, rarity, OVR tiers, goalie ratings and filters are locked in.</div></div><div><b>Next up</b><div class="muted small">Team Builder → full Quick Game → tournaments and more.</div></div></div><div class="source">Base Set is locked for gameplay. Players and OVRs will not change during normal use. V18.1 completes Collection, Packs and Achievements while preserving Team Builder, Quick Game and the locked Base Set.</div></div></section>
+<section id="home" class="page active"><div class="dashboard"><div class="dashHero"><div class="badge">🏒 HOCKEY CARD GAME • V18.2</div><h2>Build your collection. Build your team. Play.</h2><p class="muted">Collect NHL players, chase rare Base cards, earn coins and get ready for the full hockey gameplay system.</p><button class="primary playBig" onclick="show('game')">🎮 PLAY QUICK GAME</button><div id="syncStatus" class="notice" style="margin-top:14px">Loading your locked Base Set…</div><button id="syncBtn" class="primary">🔄 Manual NHL Refresh</button></div><div class="quickStats"><div class="quickStat"><b id="homeCoins">1000</b><span>🪙 Coins</span></div><div class="quickStat"><b id="homePct">0%</b><span>🃏 Collection Complete</span></div><div class="quickStat"><b id="homeUnique">0</b><span>Unique Cards</span></div><div class="quickStat"><b id="homePower">—</b><span>Projected Team OVR</span></div></div></div><div class="homeGrid"><div class="panel feature"><h3>🎁 Daily Reward</h3><div class="daily"><div><b>Free daily coins</b><div class="muted small">Come back every day for a free reward.</div></div><button id="dailyBtn" class="primary" onclick="claimDaily()">Claim 100 🪙</button></div></div><div class="panel feature"><h3>⭐ Featured</h3><p class="muted">Chase the highest Base OVR players and collect every version as special sets arrive.</p><button class="secondary" onclick="show('packs')">📦 View Packs</button></div></div><div class="panel" style="margin-top:14px"><h3>🎯 V18.2 roadmap</h3><div class="grid2"><div><b>Collection</b><div class="muted small">Base Set, rarity, OVR tiers, goalie ratings and filters are locked in.</div></div><div><b>Next up</b><div class="muted small">Team Builder → full Quick Game → tournaments and more.</div></div></div><div class="source">Base Set is locked for gameplay. Players and OVRs will not change during normal use. V18.2 separates universal Base Set data from personal player data and prepares the account/cloud-save layer.</div></div></section>
 
 <section id="collection" class="page">
 <div class="panel">
@@ -79,6 +79,8 @@ input,select{width:100%;min-height:44px;border:1px solid #2a4765;border-radius:1
 <div class="panel"><h3>📋 Starting Lineup</h3><div id="gameRoster" class="miniRoster"></div></div>
 </section>
 
+<section id="account" class="page"><div class="panel"><div class="badge">👤 PLAYER ACCOUNT</div><h2>Account & Device Sync</h2><p class="muted">V18.2 separates the universal Base Set from your personal game data. This prototype keeps your account locally and provides a safe save-transfer path; true automatic cloud sync requires a real authentication/database service.</p><div id="accountStatus" class="notice success">No account profile created on this device yet.</div><div class="grid2" style="margin-top:14px"><div class="panel"><h3>🆕 Create Account Profile</h3><input id="acctUsername" placeholder="Username" maxlength="24" style="width:100%;margin:6px 0;padding:11px;border-radius:10px;border:1px solid var(--border)"><input id="acctEmail" placeholder="Email (optional in prototype)" maxlength="120" style="width:100%;margin:6px 0;padding:11px;border-radius:10px;border:1px solid var(--border)"><input id="acctPassword" type="password" placeholder="Password (prototype only)" maxlength="64" style="width:100%;margin:6px 0;padding:11px;border-radius:10px;border:1px solid var(--border)"><button class="primary" onclick="createAccountProfile()">Create Account</button></div><div class="panel"><h3>☁️ Save / Transfer</h3><p class="muted small">Your collection, coins, team, achievements and special cards are personal data. Exporting creates a JSON save that can be imported on another device.</p><button class="secondary" onclick="exportSave()">⬇️ Export My Save</button> <button class="secondary" onclick="document.getElementById('accountImportFile').click()">⬆️ Import My Save</button><input id="accountImportFile" type="file" accept="application/json" style="display:none" onchange="importSaveFile(event)"><div id="accountSaveStatus" class="notice" style="margin-top:10px">No transfer performed yet.</div></div></div><div class="notice warn" style="margin-top:14px"><b>Cloud sync status:</b> not connected yet. We will connect this account layer to a secure hosted authentication/database service before calling it true multi-device cloud sync.</div></div></section>
+
 <section id="achievements" class="page"><div class="panel"><div class="badge">🏆 MILESTONES & REWARDS</div><h2>🏆 Achievements</h2><p class="muted">Complete milestones and claim rewards. Rewards are earned in-game only.</p><div id="ach" class="achGrid">
 <div class="achItem"><div><div class="achTitle">🧊 First Card</div><div class="muted small">Own your first card</div><div class="achReward">Reward: 50 🪙</div></div><span class="pill">LOCKED</span></div>
 <div class="achItem"><div><div class="achTitle">📦 Pack Opener</div><div class="muted small">Open your first pack</div><div class="achReward">Reward: 50 🪙</div></div><span class="pill">LOCKED</span></div>
@@ -100,7 +102,7 @@ const TEAM_NAMES={
 ANA:"Anaheim Ducks",BOS:"Boston Bruins",BUF:"Buffalo Sabres",CAR:"Carolina Hurricanes",CBJ:"Columbus Blue Jackets",CGY:"Calgary Flames",CHI:"Chicago Blackhawks",COL:"Colorado Avalanche",DAL:"Dallas Stars",DET:"Detroit Red Wings",EDM:"Edmonton Oilers",FLA:"Florida Panthers",LAK:"Los Angeles Kings",MIN:"Minnesota Wild",MTL:"Montréal Canadiens",NJD:"New Jersey Devils",NSH:"Nashville Predators",NYI:"New York Islanders",NYR:"New York Rangers",OTT:"Ottawa Senators",PHI:"Philadelphia Flyers",PIT:"Pittsburgh Penguins",SEA:"Seattle Kraken",SJS:"San Jose Sharks",STL:"St. Louis Blues",TBL:"Tampa Bay Lightning",TOR:"Toronto Maple Leafs",UTA:"Utah Mammoth",VAN:"Vancouver Canucks",VGK:"Vegas Golden Knights",WPG:"Winnipeg Jets",WSH:"Washington Capitals"
 };
 
-const navItems=[["home","🏠 Home"],["collection","🃏 Collection"],["packs","📦 Packs"],["teamPage","🏒 Team"],["game","🎮 Quick Game"],["achievements","🏆 Achievements"]];
+const navItems=[["home","🏠 Home"],["collection","🃏 Collection"],["packs","📦 Packs"],["teamPage","🏒 Team"],["game","🎮 Quick Game"],["achievements","🏆 Achievements"],["account","👤 Account"]];
 const nav=document.getElementById("nav");
 navItems.forEach(([id,label])=>{const b=document.createElement("button");b.textContent=label;b.onclick=()=>show(id);nav.appendChild(b)});
 
@@ -117,6 +119,69 @@ function saveSpecials(){localStorage.setItem("hcg_special_inventory_v18",JSON.st
 
 
 function save(){localStorage.setItem("hcg_owned_v5",JSON.stringify(owned));localStorage.setItem("hcg_coins_v5",coins)}
+function snapshotBase(){
+  const locked=JSON.parse(localStorage.getItem("hcg_locked_base_v16")||"[]");
+  return locked.length?locked:players;
+}
+function buildPersonalSave(){
+  return {
+    format:"HCG-SAVE",version:"18.2",createdAt:new Date().toISOString(),
+    account:loadAccountProfile(),coins,owned,specialInventory,
+    teamSlots:getTeamSlots(),
+    achievementsClaimed:JSON.parse(localStorage.getItem("hcg_ach_claimed_v13")||localStorage.getItem("hcg_ach_claimed_v12")||"{}"),
+    gamesPlayed:Number(localStorage.getItem("hcg_games_played_v13")||localStorage.getItem("hcg_games_played_v12")||0),
+    gamesWins:Number(localStorage.getItem("hcg_games_wins_v13")||localStorage.getItem("hcg_games_wins_v12")||0),
+    shutout:localStorage.getItem("hcg_shutout_v13")||localStorage.getItem("hcg_shutout_v12")||"0",
+    packsOpened:Number(localStorage.getItem("hcg_packs_opened_v18")||0),
+    packHistory:JSON.parse(localStorage.getItem("hcg_pack_history_v18")||"[]")
+  };
+}
+function exportSave(){
+  const data=buildPersonalSave();
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="hockey-card-game-save-v18.2.json";a.click();URL.revokeObjectURL(a.href);
+  const el=document.getElementById("accountSaveStatus")||document.getElementById("dataStatus");if(el)el.textContent="✅ Personal save exported. Import this file on another device to transfer your progress.";
+}
+function exportBaseSet(){
+  const base=snapshotBase();
+  if(!base.length){alert("No Base Set is available to export on this device yet.");return;}
+  const data={format:"HCG-BASE-SET",version:"18.2",locked:true,createdAt:new Date().toISOString(),players:base};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="hockey-card-game-base-set-v18.2.json";a.click();URL.revokeObjectURL(a.href);
+}
+async function importSaveFile(event){
+  const file=event.target.files?.[0];if(!file)return;
+  try{
+    const data=JSON.parse(await file.text());
+    if(data.format!=="HCG-SAVE"&&data.format!=="HCG-BASE-SET")throw new Error("Not a Hockey Card Game save file.");
+    if(data.format==="HCG-BASE-SET"){
+      if(!Array.isArray(data.players)||!data.players.length)throw new Error("Base Set file is empty.");
+      const current=snapshotBase();
+      if(current.length && JSON.stringify(current)!==JSON.stringify(data.players)){
+        if(!confirm("This device already has a different Base Set snapshot. Replace it with the imported locked snapshot?"))return;
+      }
+      localStorage.setItem("hcg_locked_base_v16",JSON.stringify(data.players));players=data.players;fillTeams();update();render();
+      const el=document.getElementById("accountSaveStatus")||document.getElementById("dataStatus");if(el)el.textContent=`✅ Locked Base Set imported: ${players.length} players.`;return;
+    }
+    if(data.coins!==undefined)coins=Math.max(0,Number(data.coins)||0);
+    if(data.owned&&typeof data.owned==="object")owned=data.owned;
+    if(Array.isArray(data.specialInventory))specialInventory=data.specialInventory;
+    if(Array.isArray(data.teamSlots))saveTeamSlots(data.teamSlots.slice(0,10));
+    if(data.achievementsClaimed&&typeof data.achievementsClaimed==="object")localStorage.setItem("hcg_ach_claimed_v13",JSON.stringify(data.achievementsClaimed));
+    localStorage.setItem("hcg_games_played_v13",String(Number(data.gamesPlayed)||0));
+    localStorage.setItem("hcg_games_wins_v13",String(Number(data.gamesWins)||0));
+    localStorage.setItem("hcg_shutout_v13",data.shutout?"1":"0");
+    localStorage.setItem("hcg_packs_opened_v18",String(Number(data.packsOpened)||0));
+    localStorage.setItem("hcg_pack_history_v18",JSON.stringify(Array.isArray(data.packHistory)?data.packHistory:[]));
+    if(data.account)localStorage.setItem(accountKey(),JSON.stringify(data.account));
+    saveSpecials();save();update();render();renderAch();renderPackHistory();renderTeam();renderAccount();
+    const el=document.getElementById("accountSaveStatus")||document.getElementById("dataStatus");if(el)el.textContent="✅ Personal save imported successfully on this device.";
+  }catch(err){alert("Could not import this save: "+err.message)}finally{event.target.value="";}
+}
+function accountKey(){return "hcg_account_profile_v18";}
+function loadAccountProfile(){try{return JSON.parse(localStorage.getItem(accountKey())||"null")}catch(e){return null}}
+function hashText(text){let h=2166136261;for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(16)}
+function renderAccount(){const a=loadAccountProfile();const el=document.getElementById("accountStatus");if(!el)return;if(a){el.className="notice success";el.innerHTML=`<b>Signed in on this device:</b> ${esc(a.username)}<br><span class="muted small">Account ID: ${esc(a.id)}</span>`}else{el.className="notice";el.textContent="No account profile created on this device yet."}}
+function createAccountProfile(){const u=(document.getElementById("acctUsername")?.value||"").trim();const e=(document.getElementById("acctEmail")?.value||"").trim();const pw=document.getElementById("acctPassword")?.value||"";if(u.length<3){alert("Username must be at least 3 characters.");return}if(pw.length<6){alert("Password must be at least 6 characters in this prototype.");return}const a={id:"HCG-"+Math.random().toString(36).slice(2,10).toUpperCase(),username:u,email:e,passwordHash:hashText(pw),createdAt:new Date().toISOString()};localStorage.setItem(accountKey(),JSON.stringify(a));renderAccount();document.getElementById("accountSaveStatus").textContent="Account profile created on this device. Export your save to move progress to another device."}
 function show(id){document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));document.getElementById(id).classList.add("active");update();if(id==="collection")render();if(id==="teamPage")renderTeam();if(id==="game")renderGameSetup();if(id==="achievements")renderAch()}
 function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 function rarityClass(r){return r.toLowerCase().replace(" ","-")}
@@ -686,6 +751,7 @@ if(lockedBase.length){
   st.className="notice warn";
   st.innerHTML="⚠️ No saved Base Set found on this device. Use <b>Sync NHL Base Set</b> once to create the locked set.";
 }
+try{renderAccount()}catch(e){}
 </script>
 </body>
 </html>
